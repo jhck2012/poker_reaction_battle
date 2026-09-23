@@ -1,0 +1,468 @@
+/* ============================================================
+   全域設定
+============================================================ */
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  touch-action: manipulation;                 /* 防止手機雙擊縮放延遲 */
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+}
+
+body {
+  background:
+    radial-gradient(ellipse at 50% 30%, #1d6b52 0%, #0f4a38 45%, #06281f 100%);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* 賭桌布紋：細緻的放射狀紋理感 */
+body::before {
+  content: "";
+  position: fixed; inset: 0;
+  background:
+    repeating-radial-gradient(circle at 50% 40%, rgba(255,255,255,.02) 0 2px, transparent 2px 6px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ============================================================
+   遊戲參數（方便微調，對應 JS 中的 CONFIG）
+============================================================ */
+:root {
+  --playerA-color: #e63946;      /* 玩家A 紅 */
+  --playerB-color: #3a86ff;      /* 玩家B 藍 */
+  --gold: #ffd166;
+  --card-w: clamp(110px, 22vmin, 170px);
+  --card-ratio: 1.4;
+}
+
+/* ============================================================
+   畫面容器（開始/遊戲/結束 三個畫面）
+============================================================ */
+.screen {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 1;
+  transition: opacity .4s ease, visibility .4s;
+}
+.screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+/* ============================================================
+   開始畫面
+============================================================ */
+#startScreen h1 {
+  white-space: nowrap;                                /* 標題固定同一行 */
+  font-size: clamp(26px, min(9vmin, 10.5vw), 72px);   /* 依寬度與高度等比縮放，絕不換行 */
+  letter-spacing: .12em;
+  color: var(--gold);
+  text-shadow: 0 4px 18px rgba(0,0,0,.5), 0 0 40px rgba(255,209,102,.35);
+  margin-bottom: 6px;
+}
+#startScreen .subtitle { opacity: .75; margin-bottom: 26px; font-size: clamp(14px, 2.4vmin, 18px); }
+
+.rules-box {
+  background: rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 16px;
+  padding: 18px 26px;
+  max-width: 520px;
+  width: 88%;
+  font-size: clamp(13px, 2.2vmin, 16px);
+  line-height: 1.9;
+  backdrop-filter: blur(6px);
+  margin-bottom: 30px;
+}
+.rules-box b { color: var(--gold); }
+
+.big-btn {
+  font-size: clamp(18px, 3vmin, 24px);
+  font-weight: 700;
+  letter-spacing: .15em;
+  padding: 16px 52px;
+  border: none;
+  border-radius: 50px;
+  background: linear-gradient(135deg, #ffd166, #ff9f1c);
+  color: #4a2c00;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(255,159,28,.4), inset 0 2px 0 rgba(255,255,255,.5);
+  transition: transform .15s, box-shadow .15s;
+}
+.big-btn:active { transform: scale(.94); }
+
+/* 「？」與「開始」並列列 */
+.start-btns { display: flex; gap: 18px; align-items: center; justify-content: center; }
+
+/* 「？」圓形規則按鈕 */
+.btn-round {
+  width: 62px; height: 62px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 28px;
+  font-weight: 800;
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  border: 2px solid rgba(255,255,255,.45);
+  box-shadow: 0 6px 18px rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.2);
+  cursor: pointer;
+  transition: transform .15s, background .15s;
+}
+.btn-round:active { transform: scale(.9); }
+
+/* 首頁：內容超出畫面（如規則展開、橫屏手機）時可捲動，按鈕永遠可達 */
+#startScreen {
+  overflow-y: auto;
+  justify-content: center;
+  justify-content: safe center;   /* 內容過高時改為置頂對齊，不裁切上方 */
+  padding: 16px 0;
+}
+
+/* 3-2-1 倒數 */
+#countdownOverlay {
+  position: fixed; inset: 0;
+  display: none;
+  align-items: center; justify-content: center;
+  background: rgba(0,0,0,.55);
+  z-index: 50;
+}
+#countdownOverlay.show { display: flex; }
+#countNum {
+  font-size: clamp(90px, 22vmin, 180px);
+  font-weight: 900;
+  color: var(--gold);
+  text-shadow: 0 0 60px rgba(255,209,102,.6);
+  animation: pop .9s ease infinite;
+}
+@keyframes pop {
+  0%   { transform: scale(.4); opacity: 0; }
+  30%  { transform: scale(1.15); opacity: 1; }
+  60%  { transform: scale(1); }
+  100% { transform: scale(1); opacity: .9; }
+}
+
+/* ============================================================
+   遊戲畫面
+============================================================ */
+#gameScreen {
+  justify-content: flex-start;
+  padding: 10px 0;
+  display: none;
+}
+#gameScreen.show { display: flex; }
+
+/* ---- 頂部：標題 + 計時 ---- */
+.top-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 18px;
+  gap: 10px;
+}
+.game-title {
+  font-size: clamp(15px, 2.6vmin, 22px);
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: .1em;
+  white-space: nowrap;
+}
+
+/* 圓形計時環 */
+.timer-wrap { position: relative; width: clamp(64px, 11vmin, 92px); height: clamp(64px, 11vmin, 92px); }
+.timer-wrap svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+.timer-bg { fill: none; stroke: rgba(255,255,255,.15); stroke-width: 6; }
+.timer-arc { fill: none; stroke: var(--gold); stroke-width: 6; stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear, stroke .3s; }
+#timerText {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(20px, 4vmin, 30px);
+  font-weight: 900;
+}
+.timer-wrap.danger .timer-arc { stroke: #ff3b3b; }
+.timer-wrap.danger #timerText { color: #ff5252; animation: blink .5s step-end infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+
+#soundBtn {
+  background: rgba(0,0,0,.3);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 12px;
+  font-size: clamp(18px, 3vmin, 24px);
+  padding: 6px 12px;
+  cursor: pointer;
+  color: #fff;
+}
+
+/* ---- 中央區域（牌桌） ---- */
+.table-area {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 5vmin, 50px);
+  position: relative;
+}
+
+/* 玩家資訊面板（寬螢幕放左右兩側） */
+.player-panel {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px;
+  min-width: 110px;
+}
+.player-name { font-weight: 700; font-size: clamp(14px, 2.4vmin, 18px); letter-spacing: .08em; }
+.player-name.a { color: #ff8a94; }
+.player-name.b { color: #8ab8ff; }
+.score-badge {
+  font-size: clamp(30px, 6vmin, 46px);
+  font-weight: 900;
+  background: rgba(0,0,0,.4);
+  border: 2px solid;
+  border-radius: 16px;
+  padding: 4px 22px;
+  min-width: 100px;
+  text-align: center;
+}
+.score-badge.a { border-color: var(--playerA-color); color: #ffb3ba; }
+.score-badge.b { border-color: var(--playerB-color); color: #b3d1ff; }
+.score-badge.bump { animation: bump .3s ease; }
+@keyframes bump { 50% { transform: scale(1.2); } }
+
+/* ---- 撲克牌（3D 翻牌） ---- */
+.card-slot { perspective: 1000px; }
+.card {
+  width: var(--card-w);
+  height: calc(var(--card-w) * var(--card-ratio));
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform .45s cubic-bezier(.4,.1,.2,1.2);
+}
+.card.flipped { transform: rotateY(180deg); }
+.card-face {
+  position: absolute; inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 14px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  box-shadow: 0 10px 26px rgba(0,0,0,.45);
+}
+.card-back {
+  background:
+    repeating-linear-gradient(45deg, #274690 0 8px, #1a2f63 8px 16px);
+  border: 6px solid #fff;
+  font-size: calc(var(--card-w) * .45);
+}
+.card-front {
+  background: linear-gradient(160deg, #ffffff, #f0f0f0);
+  transform: rotateY(180deg);
+  color: #1a1a1a;
+}
+.card-front.red { color: #d90429; }
+.card-rank {
+  font-size: calc(var(--card-w) * .52);
+  font-weight: 900;
+  line-height: 1;
+}
+.card-suit { font-size: calc(var(--card-w) * .34); line-height: 1.2; }
+.card-corner {
+  position: absolute;
+  font-weight: 800;
+  font-size: calc(var(--card-w) * .16);
+  line-height: 1.05;
+  text-align: center;
+}
+.card-corner.tl { top: 8px; left: 10px; }
+.card-corner.br { bottom: 8px; right: 10px; transform: rotate(180deg); }
+
+/* 回合狀態提示（對/錯閃光） */
+.table-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 5;
+}
+.table-flash.go { animation: flashA .5s ease; }
+.table-flash.bad { animation: flashB .5s ease; }
+@keyframes flashA { 0% { opacity: .5; background: radial-gradient(circle, rgba(46,204,113,.5), transparent 65%); } 100% { opacity: 0; } }
+@keyframes flashB { 0% { opacity: .5; background: radial-gradient(circle, rgba(231,76,60,.5), transparent 65%); } 100% { opacity: 0; } }
+
+/* 浮動分數文字 */
+.float-text {
+  position: fixed;
+  font-size: clamp(22px, 4.5vmin, 34px);
+  font-weight: 900;
+  pointer-events: none;
+  z-index: 60;
+  animation: floatUp 1s ease-out forwards;
+  text-shadow: 0 2px 8px rgba(0,0,0,.6);
+}
+.float-text.plus { color: #2eff8f; }
+.float-text.minus { color: #ff5252; }
+@keyframes floatUp {
+  0%   { transform: translateY(0) scale(.6); opacity: 0; }
+  20%  { transform: translateY(-14px) scale(1.15); opacity: 1; }
+  100% { transform: translateY(-70px) scale(1); opacity: 0; }
+}
+
+/* ---- 玩家按鈕區 ---- */
+.controls {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 4vw 20px;
+  gap: 12px;
+}
+
+.hit-btn {
+  width: clamp(110px, 20vmin, 180px);
+  height: clamp(110px, 20vmin, 180px);
+  min-width: 80px; min-height: 80px;
+  border-radius: 50%;
+  border: none;
+  font-size: clamp(16px, 3vmin, 22px);
+  font-weight: 900;
+  letter-spacing: .1em;
+  color: #fff;
+  cursor: pointer;
+  position: relative;
+  transition: transform .08s;
+  box-shadow: 0 10px 26px rgba(0,0,0,.5), inset 0 3px 0 rgba(255,255,255,.35), inset 0 -6px 0 rgba(0,0,0,.25);
+}
+.hit-btn .key-hint {
+  display: block;
+  font-size: .65em;
+  font-weight: 600;
+  opacity: .85;
+  margin-top: 4px;
+}
+.hit-btn.a { background: radial-gradient(circle at 35% 30%, #ff6b74, #c1121f 70%); }
+.hit-btn.b { background: radial-gradient(circle at 35% 30%, #6ba8ff, #1d5fbf 70%); }
+.hit-btn:active, .hit-btn.pressed { transform: scale(.9); }
+.hit-btn:disabled { filter: grayscale(.6) brightness(.7); cursor: default; }
+.hit-btn.shake { animation: shake .4s ease; }
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+}
+.hit-btn.won-round { animation: winPulse .45s ease; }
+@keyframes winPulse { 50% { transform: scale(1.12); box-shadow: 0 0 40px rgba(46,255,143,.8); } }
+
+/* ============================================================
+   結束畫面
+============================================================ */
+#endScreen h1 {
+  font-size: clamp(32px, 7vmin, 58px);
+  color: var(--gold);
+  text-shadow: 0 4px 20px rgba(0,0,0,.5);
+  margin-bottom: 10px;
+  animation: pop .8s ease;
+}
+#endScreen .final-scores {
+  display: flex;
+  gap: 26px;
+  margin: 22px 0 34px;
+}
+#endScreen .final-box {
+  background: rgba(0,0,0,.4);
+  border: 2px solid;
+  border-radius: 18px;
+  padding: 14px 30px;
+  text-align: center;
+  min-width: 130px;
+}
+#endScreen .final-box.a { border-color: var(--playerA-color); }
+#endScreen .final-box.b { border-color: var(--playerB-color); }
+#endScreen .final-box .fname { font-weight: 700; margin-bottom: 4px; }
+#endScreen .final-box.a .fname { color: #ff8a94; }
+#endScreen .final-box.b .fname { color: #8ab8ff; }
+#endScreen .final-box .fscore { font-size: clamp(34px, 7vmin, 52px); font-weight: 900; }
+
+/* ============================================================
+   響應式：手機直屏 → 雙按鈕並排在下方
+============================================================ */
+@media (orientation: portrait), (max-width: 720px) {
+  .table-area { flex-direction: column; gap: 10px; }
+  /* 比分改放到按鈕上方 */
+  .player-panel { flex-direction: row; min-width: 0; gap: 6px; }
+  .player-panel .score-badge { font-size: 24px; padding: 2px 14px; min-width: 72px; }
+  /* 面板位置：A 在左、B 在右，放於按鈕列上方 */
+  .controls { justify-content: center; gap: 20px; padding-bottom: 26px; }
+  .hit-btn { width: clamp(120px, 38vw, 170px); height: clamp(120px, 38vw, 170px); }
+  .hit-btn .key-hint { display: none; }   /* 手機不顯示鍵盤提示 */
+  .table-area { justify-content: center; }
+  :root { --card-w: clamp(100px, 30vw, 150px); }
+}
+
+/* ============================================================
+   手機橫屏（orientation: landscape 且螢幕較矮）：
+   單列配置：左 玩家A按鈕 | 中央超大撲克牌 | 右 玩家B按鈕，
+   卡牌以 vmin 等比放到最大，確保玩家容易看清；
+   比分放於下方左右角。此段在 portrait 規則之後，會覆寫衝突屬性。
+============================================================ */
+@media (orientation: landscape) and (max-height: 540px) {
+  :root {
+    /* 卡牌盡量放大：高度預算 = 螢幕高 - 頂部列；寬度預算 = 螢幕寬 - 兩側按鈕 */
+    --card-w: clamp(100px, 46vmin, 175px);
+  }
+  /* 頂部列壓縮，讓出垂直空間給卡牌 */
+  .top-bar { padding: 2px 12px; }
+  .game-title { font-size: 13px; letter-spacing: .06em; }
+  .timer-wrap { width: 46px; height: 46px; }
+  #timerText { font-size: 17px; }
+  #soundBtn { font-size: 15px; padding: 3px 8px; border-radius: 8px; }
+
+  /* 中央牌桌：只有兩張牌，水平置中，佔據主要空間 */
+  .table-area { flex-direction: row; gap: clamp(10px, 4vmin, 26px); padding: 0 8px; }
+
+  /* 比分面板移到下方左右角（單列配置中左右下角為空位） */
+  .player-panel { position: absolute; bottom: 8px; flex-direction: column; gap: 2px; min-width: 62px; z-index: 7; }
+  #panelA { left: 12px; }
+  #panelB { right: 12px; }
+  .player-name { font-size: 12px; }
+  .score-badge { font-size: 20px; font-weight: 800; padding: 1px 10px; min-width: 58px; border-radius: 10px; }
+
+  /* 按鈕移到畫面左右兩側垂直置中（橫屏雙手握持時拇指自然位置） */
+  .controls {
+    position: absolute;
+    left: 0; right: 0; top: 50%;
+    transform: translateY(-50%);
+    padding: 0 6px;
+    pointer-events: none;          /* 中間區域可穿透，只保留按鈕可點 */
+    z-index: 6;
+  }
+  .hit-btn {
+    pointer-events: auto;
+    width: clamp(80px, 24vmin, 104px);
+    height: clamp(80px, 24vmin, 104px);
+    font-size: 14px;
+  }
+  .hit-btn .key-hint { display: none; }
+
+  /* 浮動分數文字從按鈕位置飄出 */
+  .float-text { font-size: 20px; }
+
+  /* 首頁（規則介面）在橫屏矮畫面整體縮小，確保「？」與「開始」完整可見 */
+  #startScreen h1 { font-size: clamp(22px, 8vmin, 36px); }
+  #startScreen .subtitle { font-size: 12px; margin-bottom: 12px; }
+  .rules-box {
+    font-size: 12px; line-height: 1.7;
+    padding: 10px 16px; margin-bottom: 14px;
+    max-height: 48vh; overflow-y: auto;   /* 規則過高時自身可捲動 */
+  }
+  .start-btns { gap: 12px; }
+  .big-btn { padding: 12px 36px; font-size: 17px; }
+  .btn-round { width: 52px; height: 52px; font-size: 23px; }
+}

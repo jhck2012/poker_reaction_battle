@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>撲克牌反應對戰</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ================= 開始畫面 ================= -->
+<div class="screen" id="startScreen">
+  <h1>🃏 撲克牌反應對戰</h1>
+  <div class="subtitle">雙人同機 · 反應力大考驗</div>
+  <div class="rules-box" id="rulesBox" style="display:none;">
+    💻 電腦：兩玩家分別按 <b>A 鍵</b>和 <b>L 鍵</b><br>
+    📱 手機：兩玩家分別按<b>紅鍵</b>和<b>藍鍵</b><br>
+    ✅ 撲克牌<b>數字或英文字母相同</b>時，搶先按者 <b>+2 分</b><br>
+    ❌ 誤按者 <b>-1 分</b>（分數可為負數）
+  </div>
+  <div class="start-btns">
+    <button class="btn-round" id="rulesBtn" title="遊戲規則">？</button>
+    <button class="big-btn" id="startBtn">開始對戰</button>
+  </div>
+</div>
+
+<!-- ================= 3-2-1 倒數 ================= -->
+<div id="countdownOverlay"><div id="countNum">3</div></div>
+
+<!-- ================= 遊戲畫面 ================= -->
+<div class="screen" id="gameScreen">
+  <div class="top-bar">
+    <div class="game-title">🃏 撲克牌反應對戰</div>
+    <div class="timer-wrap" id="timerWrap">
+      <svg viewBox="0 0 100 100">
+        <circle class="timer-bg" cx="50" cy="50" r="44"/>
+        <circle class="timer-arc" id="timerArc" cx="50" cy="50" r="44"/>
+      </svg>
+      <div id="timerText">60</div>
+    </div>
+    <button id="soundBtn" title="音效開關">🔊</button>
+  </div>
+
+  <div class="table-area" id="tableArea">
+    <div class="table-flash" id="tableFlash"></div>
+
+    <!-- 玩家 A 面板 -->
+    <div class="player-panel" id="panelA">
+      <div class="player-name a">玩家 A</div>
+      <div class="score-badge a" id="scoreA">0</div>
+    </div>
+
+    <!-- 兩張撲克牌 -->
+    <div class="card-slot"><div class="card" id="card1">
+      <div class="card-face card-back">🂠</div>
+      <div class="card-face card-front" id="front1"></div>
+    </div></div>
+    <div class="card-slot"><div class="card" id="card2">
+      <div class="card-face card-back">🂠</div>
+      <div class="card-face card-front" id="front2"></div>
+    </div></div>
+
+    <!-- 玩家 B 面板 -->
+    <div class="player-panel" id="panelB">
+      <div class="player-name b">玩家 B</div>
+      <div class="score-badge b" id="scoreB">0</div>
+    </div>
+  </div>
+
+  <!-- 按鈕區 -->
+  <div class="controls">
+    <button class="hit-btn a" id="btnA">玩家A<span class="key-hint">按鍵 A</span></button>
+    <button class="hit-btn b" id="btnB">玩家B<span class="key-hint">按鍵 L</span></button>
+  </div>
+</div>
+
+<!-- ================= 結束畫面 ================= -->
+<div class="screen hidden" id="endScreen">
+  <h1 id="resultTitle">🎉 玩家 A 獲勝！</h1>
+  <div class="final-scores">
+    <div class="final-box a"><div class="fname">玩家 A</div><div class="fscore" id="finalA">0</div></div>
+    <div class="final-box b"><div class="fname">玩家 B</div><div class="fscore" id="finalB">0</div></div>
+  </div>
+  <button class="big-btn" id="restartBtn">🔁 再玩一次</button>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
